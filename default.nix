@@ -3,6 +3,7 @@ let
 in
 pkgs.mkShell {
   buildInputs = with pkgs; [
+    pkg-config
     zlib
     sqlite
     libudev-zero
