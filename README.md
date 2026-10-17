@@ -37,6 +37,10 @@ My code audits are best-effort, and I make security enhancements as I identify p
 - [Building](./doc/BUILD.md): Read this if you're not sure how to build
   `pcloudcc`. For most users, `make` and `make install` are enough.
 
+- Nix run usage: when launching via `nix run`, pass program arguments after a
+  `--` separator. Example: `nix run github:mathew-d/pcloudcc-lneely -- --help`
+  or `nix run github:mathew-d/pcloudcc-lneely -- -u example@myemail.com`.
+
 - [mbedtls 3.x migration notes](./doc/MBEDTLS-3.x.md): Read this if you use an
   older distribution such as `debian:bookworm` and encounter build problems.
 
