@@ -58,3 +58,7 @@ My code audits are best-effort, and I make security enhancements as I identify p
   systemd service for running `pcloudcc` in userspace with podman. Includes multi-stage
   Dockerfile that builds `pcloudcc` from source and Quadlet systemd unit for automated
   background syncing.
+
+- [pcloudcc-gui](./pcloudcc-gui/): Lightweight Rust desktop GUI for managing pCloudCC.
+  Manages the CLI binary as a separate process to preserve low resource consumption
+  (~31 MiB vs ~343 MiB for official GUI).
