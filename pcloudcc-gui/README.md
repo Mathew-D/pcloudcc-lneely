@@ -1,104 +1,94 @@
 # pCloudCC GUI
 
-A lightweight Rust desktop GUI for managing the pCloudCC command-line client.
+A lightweight Rust desktop app for controlling the pCloudCC command-line client.
+It uses the existing `pcloudcc` process and command interface; it does not
+reimplement the sync engine.
 
 ## Features
 
-- **Process Management**: Start and stop the pCloudCC daemon
-- **Status Monitoring**: View daemon status and pending transfers
-- **Configuration**: Configure username, mount point, cache size, and logging
-- **Sync Folder Management**: List, pause, and resume sync folders
-- **Crypto Support**: Unlock and lock crypto folders
-- **Background Mode**: Minimize to background (close to hide, Ctrl+Shift+P to restore)
-
-## Running on Linux
-
-The GUI requires either Wayland or X11 display server. If you're on Wayland and encounter errors, you can force X11 backend:
-
-```bash
-# Force X11 backend
-export WINIT_UNIX_BACKEND=x11
-./target/release/pcloudcc-gui
-
-# Or use the provided script
-./run.sh
-```
-
-If you still encounter issues, install Wayland libraries:
-```bash
-# Arch Linux
-sudo pacman -S wayland
-
-# Debian/Ubuntu
-sudo apt install libwayland-dev
-```
+- Overview with connection state, mount point, cache limit, and daemon details
+- Start and stop controls, including confirmation before stopping with pending transfers
+- Closing the window keeps the GUI and daemon running in the system tray
+- Exit stops the daemon, including one started outside the GUI
+- Minimize to the system tray and restore the window from the tray icon
+- Sync-folder listing and pause/resume controls
+- Crypto-folder unlock and lock controls
+- Settings for the account email, mount point, cache, logging, and executable path
+- Settings are stored in the user's configuration directory; account and crypto
+  passwords are not stored by the GUI
+- Process commands run in a background worker so the window remains responsive
 
 ## Requirements
 
-- Rust 1.70 or later
-- pCloudCC binary (built from the parent directory)
-- Linux (with X11 or Wayland support)
+- Rust 1.87 or later
+- A built `pcloudcc` binary
+- Linux with an X11 or Wayland display server
+- A session D-Bus and a desktop system tray supporting StatusNotifierItem
 
-## Building
+## Build and run
 
 ```bash
 cd pcloudcc-gui
 cargo build --release
-```
-
-The compiled binary will be at `target/release/pcloudcc-gui`.
-
-## Running
-
-```bash
 ./target/release/pcloudcc-gui
 ```
 
-## Usage
+The GUI looks for `pcloudcc` in the current directory, the parent directory,
+the repository directory when run from a Cargo build, common system paths, and
+`PATH`. If it is installed elsewhere, set the path in **Settings** and select
+**Use this executable**. If a previously saved path is wrong, use **Find
+automatically**, then **Use this executable**.
 
-1. **Configuration Tab**: Set up your pCloud credentials and preferences
-   - Enter your pCloud username
-   - Optionally set a custom mount point
-   - Configure cache size (default: 5GB)
-   - Set log path and level
-   - Enable password saving if desired
+After starting, the GUI waits up to 15 seconds for the daemon to respond and
+shows a readable status, transfer details, and optional technical output.
+Status refreshes automatically every three seconds while connecting or waiting
+for authentication, and every 15 seconds when ready or syncing. A responding
+daemon does not necessarily mean the account is authenticated or the
+filesystem is mounted; the displayed mount point is only the configured value.
+If the daemon does not respond, check the configured log file (by default
+`~/.pcloud/debug.log`) and refresh the status before retrying.
 
-2. **Status Tab**: Control the daemon
-   - Click "Start pCloudCC" to launch the daemon
-   - Click "Refresh Status" to view current status
-   - Click "Check Pending" to see pending transfers
-   - Click "Stop pCloudCC" to gracefully shut down
+Close the window or use **Minimize to tray** to hide it without stopping the daemon.
+The window is recreated on restore, while the GUI state and background worker
+remain in memory. This also works on native Wayland without Xwayland.
+The bundled eframe 0.27.2 has a small Linux event-loop cleanup patch to ensure
+the old Wayland surface is destroyed when the window is hidden.
+The tray icon is blue with a green check when the daemon reports an online
+state, and grey with a red cross when disconnected or when the reported state
+does not establish connectivity (including connecting, scanning, or paused).
+It follows automatic status refreshes even while the window is hidden.
+The window's minimize control may also send it to the tray, depending on the
+desktop. Select the tray icon or **Show pCloudCC** in its
+menu to restore it. **Exit** in the window and **Quit and stop pCloudCC** in
+the tray menu use the same graceful shutdown and pending-transfer confirmation.
+If the desktop does not provide a compatible tray, closing the window leaves
+it open with a message; use **Exit** to stop the daemon and close the GUI.
+The minimize-to-tray button is disabled and normal window minimization remains available. If the tray
+disconnects while hidden, the GUI restores its window.
 
-3. **Sync Folders Tab**: Manage synchronization
-   - List configured sync folders
-   - Pause/resume syncing
+## Account passwords
 
-4. **Crypto Tab**: Manage encrypted folders
-   - Enter crypto password to unlock
-   - Lock crypto folder when done
+Enter the account password on the Overview page when pcloudcc has not already
+saved it. The password is passed to the pcloudcc process through its supported
+`PCLOUD_ACCOUNT_PASSWORD` environment variable and is not written to GUI
+settings. The **Ask pcloudcc to save the account password** option enables
+pcloudcc's own password-saving behavior on the device.
 
-5. **Background Mode**: Minimize to background
-   - Click "Minimize to Background" or close the window to hide
-   - Press `Ctrl+Shift+P` to restore the window
-   - Click "Quit" to fully exit the application
+The Overview page always shows password and 2FA fields. A code entered before
+starting the daemon or sending a password is held in memory and sent once if
+pCloud requests 2FA. If no challenge is requested, the code is discarded when
+sign-in completes. If a challenge appears without a code, or a code is
+rejected, enter a new code and press Enter. pCloud decides whether to request
+2FA, and codes may expire while waiting. The GUI does not save them.
+Acknowledgment that a credential was sent does not mean it was accepted.
 
-## Architecture
+Crypto passwords are sent only when unlocking the encrypted folder and are not
+saved.
 
-The GUI manages the pCloudCC binary as a separate process rather than porting its C++ code to Rust. This approach:
-
-- Preserves the low resource consumption of the CLI client (~31 MiB vs ~343 MiB for official GUI)
-- Leverages the existing daemon mode and command interface
-- Provides a lightweight GUI wrapper without reimplementing the sync engine
-
-Communication with the daemon uses the `pcloudcc -k` command interface with piped input.
-
-## Dependencies
-
-- `eframe` / `egui`: Immediate mode GUI framework
-- `tokio`: Async runtime for process management
-- `nix`: Unix signal handling for graceful shutdown
-- `serde` / `serde_json`: Configuration serialization
-- `dirs`: Cross-platform directory paths
+Exiting the GUI requests a graceful daemon shutdown, including if the daemon
+was started elsewhere. If transfers are pending, the GUI asks whether to stop
+anyway or keep running. If shutdown fails, the window stays open and displays
+the error. A forced termination or system crash cannot guarantee shutdown.
 
 ## License
 

@@ -1,4 +1,5 @@
-#!/bin/fish
-export WINIT_UNIX_BACKEND=x11
-export SDL_VIDEODRIVER=x11
-./target/debug/pcloudcc-gui "$@"
+#!/bin/sh
+set -eu
+cd "$(dirname "$0")"
+cargo build
+exec ./target/debug/pcloudcc-gui "$@"

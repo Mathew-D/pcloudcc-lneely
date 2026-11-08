@@ -270,8 +270,24 @@ void setup_app(CLI::App *app) {
     char *errm = NULL;
     size_t errm_size = 0;
     RpcClient *rpc = new RpcClient();
-    rpc->Call(CHECKPENDING, "", &errm, &errm_size);
+    int result = rpc->Call(CHECKPENDING, "", &errm, &errm_size);
     delete rpc;
+    if (result != 0) {
+      std::cerr << "Failed to check pending transfers: "
+                << (errm ? errm : "no message") << std::endl;
+      if (errm) { free(errm); }
+      return result;
+    }
+
+    uint32_t *pending = nullptr;
+    if (pshm_read((void**)&pending, nullptr) && pending) {
+      std::cout << "Pending transfers: " << *pending << std::endl;
+      pmem_free(PMEM_SUBSYS_OTHER, pending);
+    } else {
+      std::cerr << "Failed to read pending transfer count." << std::endl;
+      if (errm) { free(errm); }
+      return -1;
+    }
     if (errm) { free(errm); }
     return 0;
   });

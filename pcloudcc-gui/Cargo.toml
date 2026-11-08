@@ -4,15 +4,15 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-eframe = "0.27"
+eframe = "=0.27.2"
 egui = "0.27"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
-tokio = { version = "1.0", features = ["full"] }
 dirs = "5.0"
-nix = { version = "0.29", features = ["process", "signal"] }
+ksni = { version = "0.3", features = ["blocking"] }
 
 [patch.crates-io]
+eframe = { path = "vendor/eframe" }
 winit = { git = "https://github.com/rust-windowing/winit", tag = "v0.29.15" }
 
 [profile.release]
